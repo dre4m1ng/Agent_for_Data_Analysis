@@ -15,6 +15,7 @@ from aida.agent import (
     AgentCore,
     AgentEvent,
     AgentRunArtifacts,
+    StageLog,
     available_models,
     initialize_llm,
 )
@@ -115,11 +116,20 @@ run_button = st.button(
 log_placeholder = st.empty()
 report_placeholder = st.empty()
 charts_placeholder = st.container()
+summary_placeholder = st.container()
 
 
 def _render_logs(logs: List[str]) -> None:
     formatted = "\n".join(logs[-200:])  # keep the latest 200 entries for readability
-    log_placeholder.markdown(f"```\n{formatted}\n```")
+    if formatted:
+        log_placeholder.markdown(f"```\n{formatted}\n```")
+    else:
+        log_placeholder.markdown("로그가 아직 없습니다.")
+
+
+def _format_stage_log(log: StageLog) -> Dict[str, str]:
+    role_label = AGENT_ROLES.get(log.role, "시스템") if log.role else "시스템"
+    return {"단계": log.stage, "역할": role_label, "메시지": log.message}
 
 
 def _on_event(event: AgentEvent) -> None:
@@ -139,6 +149,12 @@ if run_button and df is not None:
     st.success("분석이 완료되었습니다. 아래 결과를 확인하세요.")
 
     report_placeholder.markdown(artifacts.final_report)
+    st.download_button(
+        "보고서 Markdown 다운로드",
+        artifacts.final_report,
+        file_name="aida_report.md",
+        mime="text/markdown",
+    )
 
     with charts_placeholder:
         st.subheader("EDA 시각화")
@@ -152,5 +168,27 @@ if run_button and df is not None:
     for insight in artifacts.insights:
         st.markdown(f"- **{insight.title}**: {insight.detail}")
 
+    with summary_placeholder:
+        st.subheader("역할별 엔진 구성")
+        for role_key, model in artifacts.role_models.items():
+            st.markdown(f"- **{AGENT_ROLES[role_key]}**: {model.name} ({model.mode})")
+
+        st.subheader("외부 검색 결과")
+        if artifacts.search_results:
+            for item in artifacts.search_results:
+                title = item.get("title") or "제목 없음"
+                snippet = item.get("snippet") or ""
+                link = item.get("link") or ""
+                if link:
+                    st.markdown(f"- **[{title}]({link})**: {snippet}")
+                else:
+                    st.markdown(f"- **{title}**: {snippet}")
+        else:
+            st.info("검색 결과가 없습니다.")
+
+        if artifacts.stage_logs:
+            st.subheader("단계별 로그 요약")
+            stage_log_rows = [_format_stage_log(log) for log in artifacts.stage_logs]
+            st.dataframe(pd.DataFrame(stage_log_rows))
 else:
     st.info("CSV 파일을 업로드하고 각 역할에 사용할 엔진을 선택한 뒤 'A.I.D.A. 분석 시작' 버튼을 클릭하세요.")

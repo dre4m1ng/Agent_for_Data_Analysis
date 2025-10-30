@@ -10,6 +10,7 @@ from .core import (
     AgentEvent,
     AgentRunArtifacts,
     Insight,
+    StageLog,
 )
 from .models import AgentModel, available_models, initialize_llm
 
@@ -18,6 +19,7 @@ __all__ = [
     "AgentEvent",
     "AgentRunArtifacts",
     "Insight",
+    "StageLog",
     "AgentModel",
     "available_models",
     "initialize_llm",
