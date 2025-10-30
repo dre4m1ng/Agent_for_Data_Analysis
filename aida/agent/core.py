@@ -15,6 +15,7 @@ from ..tools.web_searcher import WebSearcher
 from .models import AgentModel
 
 
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
 ROLE_PLANNER = "planner"
 ROLE_CLEANER = "cleaner"
 ROLE_ANALYST = "analyst"
@@ -37,6 +38,7 @@ class AgentEvent:
 
 
 @dataclass
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
 class StageLog:
     """Persisted representation of an emitted agent event."""
 
@@ -46,6 +48,7 @@ class StageLog:
 
 
 @dataclass
+
 class Insight:
     """Structured representation of an analytical insight."""
 
@@ -61,8 +64,10 @@ class AgentRunArtifacts:
     insights: List[Insight]
     final_report: str
     search_results: List[Dict[str, str]] = field(default_factory=list)
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
     role_models: Dict[str, AgentModel] = field(default_factory=dict)
     stage_logs: List[StageLog] = field(default_factory=list)
+
 
 
 EventCallback = Callable[[AgentEvent], None]
@@ -71,6 +76,7 @@ EventCallback = Callable[[AgentEvent], None]
 class AgentCore:
     """Deterministic implementation of the multi-stage analysis pipeline."""
 
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
     def __init__(self, role_models: Dict[str, AgentModel]) -> None:
         self.role_models = self._validate_roles(role_models)
         self.searcher = WebSearcher()
@@ -132,6 +138,31 @@ class AgentCore:
         charts = self._run_eda(cleaned_df, target_column, logs, callback)
 
         insights = self._generate_insights(cleaned_df, target_column, charts, logs, callback)
+    def __init__(self, model: AgentModel) -> None:
+        self.model = model
+        self.searcher = WebSearcher()
+
+    def _emit(self, callback: Optional[EventCallback], stage: str, message: str) -> None:
+        if callback:
+            callback(AgentEvent(stage=stage, message=message))
+
+    def analyse(self, df: pd.DataFrame, callback: Optional[EventCallback] = None) -> AgentRunArtifacts:
+        self._emit(callback, "initialise", f"선택된 엔진: {self.model.name} ({self.model.mode})")
+
+        diagnostics = data_diagnostics.analyze_dataframe(df)
+        self._emit(callback, "diagnostics", json.dumps(diagnostics.to_dict(), indent=2, ensure_ascii=False))
+
+        target_column = self._infer_target_column(df)
+        problem_statement = self._build_problem_statement(df, target_column)
+        self._emit(callback, "problem", problem_statement)
+
+        search_results = self._perform_search(df, target_column, callback)
+
+        cleaned_df, cleaning_logs = self._clean_dataframe(df, callback)
+
+        charts = self._run_eda(cleaned_df, target_column, callback)
+
+        insights = self._generate_insights(cleaned_df, target_column, charts, callback)
 
         final_report = self._compose_final_report(
             diagnostics=diagnostics,
@@ -140,11 +171,17 @@ class AgentCore:
             charts=charts,
             insights=insights,
             search_results=search_results,
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
             role_models=self.role_models,
             stage_logs=logs,
         )
 
         self._record(logs, callback, "final", "최종 보고서 생성 완료", ROLE_REPORTER)
+
+
+        )
+
+        self._emit(callback, "final", "최종 보고서 생성 완료")
 
         return AgentRunArtifacts(
             diagnostics=diagnostics,
@@ -153,13 +190,17 @@ class AgentCore:
             insights=insights,
             final_report=final_report,
             search_results=search_results,
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
             role_models=dict(self.role_models),
             stage_logs=logs,
+
+
         )
 
     # ---------------------------------------------------------------------
     # 1단계: 문제 정의
     def _infer_target_column(self, df: pd.DataFrame) -> str:
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         numeric_columns = [
             col
             for col in df.select_dtypes(include=[np.number]).columns
@@ -167,6 +208,11 @@ class AgentCore:
         ]
         if not numeric_columns:
             return str(df.columns[0])
+
+        numeric_columns = [col for col in df.select_dtypes(include=[np.number]).columns if not str(col).lower().endswith("id")]
+        if not numeric_columns:
+            return df.columns[0]
+
 
         heuristics = ["price", "cost", "revenue", "amount", "score", "target"]
         for column in numeric_columns:
@@ -189,18 +235,25 @@ class AgentCore:
         )
 
     def _perform_search(
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         self,
         df: pd.DataFrame,
         target_column: str,
         logs: List[StageLog],
         callback: Optional[EventCallback],
+
+        self, df: pd.DataFrame, target_column: str, callback: Optional[EventCallback]
+
     ) -> List[Dict[str, str]]:
         keywords = [target_column]
         for column in df.columns:
             if column != target_column and len(keywords) < 3:
                 keywords.append(column)
         query = " ".join(keywords[:3])
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         self._record(logs, callback, "search", f"외부 검색 실행: {query}", ROLE_PLANNER)
+
+        self._emit(callback, "search", f"외부 검색 실행: {query}")
 
         results = self.searcher.search(query)
         formatted = [
@@ -208,6 +261,7 @@ class AgentCore:
             for result in results
         ]
         if formatted:
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
             self._record(
                 logs,
                 callback,
@@ -217,10 +271,14 @@ class AgentCore:
             )
         else:
             self._record(logs, callback, "search", "검색 결과가 없습니다.", ROLE_PLANNER)
+
+            self._emit(callback, "search", json.dumps(formatted, ensure_ascii=False, indent=2))
+
         return formatted
 
     # ---------------------------------------------------------------------
     # 2단계: 정제 및 전처리
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
     def _clean_dataframe(
         self,
         df: pd.DataFrame,
@@ -230,6 +288,11 @@ class AgentCore:
         cleaned_df = df.copy()
         entries: List[str] = []
 
+    def _clean_dataframe(self, df: pd.DataFrame, callback: Optional[EventCallback]):
+        cleaned_df = df.copy()
+        logs: List[str] = []
+
+
         numeric_columns = cleaned_df.select_dtypes(include=[np.number]).columns
         categorical_columns = cleaned_df.select_dtypes(exclude=[np.number]).columns
 
@@ -237,13 +300,18 @@ class AgentCore:
             if cleaned_df[column].isna().any():
                 mean_value = cleaned_df[column].mean()
                 cleaned_df[column].fillna(mean_value, inplace=True)
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
                 message = f"{column}: 결측치 평균값({mean_value:.3f})으로 대체"
                 entries.append(message)
                 self._record(logs, callback, "cleaning", message, ROLE_CLEANER)
 
+                logs.append(f"{column}: 결측치 평균값({mean_value:.3f})으로 대체")
+
+
         for column in categorical_columns:
             if cleaned_df[column].isna().any():
                 mode_value = cleaned_df[column].mode().iloc[0]
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
                 message = f"{column}: 결측치 최빈값({mode_value})으로 대체"
                 cleaned_df[column].fillna(mode_value, inplace=True)
                 entries.append(message)
@@ -256,14 +324,29 @@ class AgentCore:
 
         return cleaned_df, entries
 
+                cleaned_df[column].fillna(mode_value, inplace=True)
+                logs.append(f"{column}: 결측치 최빈값({mode_value})으로 대체")
+
+        if not logs:
+            logs.append("결측치가 발견되지 않았습니다.")
+
+        for entry in logs:
+            self._emit(callback, "cleaning", entry)
+        return cleaned_df, logs
+
+
     # ---------------------------------------------------------------------
     # 3단계: EDA 및 시각화
     def _run_eda(
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         self,
         df: pd.DataFrame,
         target_column: str,
         logs: List[StageLog],
         callback: Optional[EventCallback],
+
+        self, df: pd.DataFrame, target_column: str, callback: Optional[EventCallback]
+
     ) -> List[ChartResult]:
         charts: List[ChartResult] = []
 
@@ -277,7 +360,11 @@ class AgentCore:
             "plt.savefig(output_path)\n"
             "plt.close()\n"
         )
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         self._record(logs, callback, "eda", f"{target_column} 분포 히스토그램 생성", ROLE_ANALYST)
+
+        self._emit(callback, "eda", f"{target_column} 분포 히스토그램 생성")
+
         charts.append(generate_chart(hist_code, df, filename=f"{target_column}_distribution.png"))
 
         numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -292,6 +379,7 @@ class AgentCore:
                 "plt.savefig(output_path)\n"
                 "plt.close()\n"
             )
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
             self._record(logs, callback, "eda", "상관관계 히트맵 생성", ROLE_ANALYST)
             charts.append(generate_chart(corr_code, df, filename="correlation_heatmap.png"))
 
@@ -317,6 +405,11 @@ class AgentCore:
                     )
                 )
 
+
+            self._emit(callback, "eda", "상관관계 히트맵 생성")
+            charts.append(generate_chart(corr_code, df, filename="correlation_heatmap.png"))
+
+
         return charts
 
     # ---------------------------------------------------------------------
@@ -326,7 +419,9 @@ class AgentCore:
         df: pd.DataFrame,
         target_column: str,
         charts: List[ChartResult],
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         logs: List[StageLog],
+
         callback: Optional[EventCallback],
     ) -> List[Insight]:
         insights: List[Insight] = []
@@ -351,8 +446,13 @@ class AgentCore:
                     )
                 )
 
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
             if target_std > 0 and target_mean:
                 coef_var = target_std / target_mean
+
+            if target_std > 0:
+                coef_var = target_std / target_mean if target_mean else np.nan
+
                 insights.append(
                     Insight(
                         title="변동계수 해석",
@@ -374,6 +474,7 @@ class AgentCore:
             )
 
         for insight in insights:
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
             self._record(
                 logs,
                 callback,
@@ -381,6 +482,9 @@ class AgentCore:
                 f"{insight.title}: {insight.detail}",
                 ROLE_REPORTER,
             )
+
+            self._emit(callback, "insight", f"{insight.title}: {insight.detail}")
+
         return insights
 
     # ---------------------------------------------------------------------
@@ -393,6 +497,7 @@ class AgentCore:
         charts: List[ChartResult],
         insights: List[Insight],
         search_results: List[Dict[str, str]],
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         role_models: Dict[str, AgentModel],
         stage_logs: List[StageLog],
     ) -> str:
@@ -404,6 +509,11 @@ class AgentCore:
             model = role_models[role]
             lines.append(f"- {AGENT_ROLES[role]}: {model.name} ({model.mode})")
         lines.append("")
+
+
+    ) -> str:
+        lines: List[str] = ["# A.I.D.A. 분석 보고서", ""]
+
 
         lines.extend(["## 1. 문제 정의", "", problem_statement, ""])
 
@@ -444,6 +554,7 @@ class AgentCore:
             lines.append(f"- **{insight.title}**: {insight.detail}")
         lines.append("")
 
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
         lines.append("## 7. 단계별 로그 요약")
         lines.append("")
         for entry in stage_logs:
@@ -452,6 +563,9 @@ class AgentCore:
         lines.append("")
 
         lines.append("## 8. 다음 단계 제안")
+
+        lines.append("## 7. 다음 단계 제안")
+
         lines.append("")
         lines.append(
             "- 추가적인 모델링 실험을 위해 훈련/검증 데이터 분할 및 하이퍼파라미터 최적화를 진행하세요."

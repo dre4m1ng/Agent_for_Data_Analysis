@@ -1,5 +1,6 @@
 """Agent orchestration package."""
 
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
 from .core import (
     AGENT_ROLES,
     ROLE_ANALYST,
@@ -12,6 +13,7 @@ from .core import (
     Insight,
     StageLog,
 )
+from .core import AgentCore, AgentEvent, AgentRunArtifacts, Insight
 from .models import AgentModel, available_models, initialize_llm
 
 __all__ = [
@@ -19,6 +21,7 @@ __all__ = [
     "AgentEvent",
     "AgentRunArtifacts",
     "Insight",
+codex/implement-a.i.d.a.-agent-features-in-github-m21dss
     "StageLog",
     "AgentModel",
     "available_models",
@@ -28,4 +31,9 @@ __all__ = [
     "ROLE_CLEANER",
     "ROLE_ANALYST",
     "ROLE_REPORTER",
+
+    "AgentModel",
+    "available_models",
+    "initialize_llm",
+
 ]
